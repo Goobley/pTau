@@ -20,15 +20,35 @@ if __name__ == "__main__":
     # Let's load a FALC model, which we have repeated in a X,Y grid of 4x4 pixels in CGS units
     #
     m = readfits('modelin.fits')
-    
-    z = m[0]*1
-    Tg = m[1]*1
-    vz = m[2]*1
-    rho = m[3]*1
-    pgas = m[4]*1
+
+    z_ = m[0]*1
+    Tg_ = m[1]*1
+    vz_ = m[2]*1
+    rho_ = m[3]*1
+    pgas_ = m[4]*1
+
+    scale_up = False
+    if scale_up:
+        bigger_dim = 50
+        z = np.zeros((bigger_dim, bigger_dim, 85))
+        Tg = np.zeros((bigger_dim, bigger_dim, 85))
+        vz = np.zeros((bigger_dim, bigger_dim, 85))
+        rho = np.zeros((bigger_dim, bigger_dim, 85))
+        pgas = np.zeros((bigger_dim, bigger_dim, 85))
+        z[...] = z_[0, 0, :]
+        Tg[...] = Tg_[0, 0, :]
+        vz[...] = vz_[0, 0, :]
+        rho[...] = rho_[0, 0, :]
+        pgas[...] = pgas_[0, 0, :]
+    else:
+        z = z_
+        Tg = Tg_
+        vz = vz_
+        rho = rho_
+        pgas = pgas_
 
     ny, nx, ndep = z.shape
-    
+
     #
     # Let's assume that we have a set of variables Temp, Pgas, z in CGS units
     # The axis ordering is (ny, nx, ndep) where ndep is the fast axis (c-ordering).
@@ -37,29 +57,29 @@ if __name__ == "__main__":
 
     t0 = time.time()
     nthreads = 8 # Use as many as your computer has!
-    
+
     ltau500 = pyTau.getTau(Tg, z, Pg=pgas, nthreads=nthreads, wav = [5000.0])
-    
+
     t1 = time.time()
     print("Pgas case dT = {0}s".format(t1-t0))
-    
+
     #
     # Alternatively we can use rho instead of Pgas but it is almost a factor x2 slower due to the internals of the EOS
     #
     t0 = time.time()
-    
+
     ltau500 = pyTau.getTau(Tg, z, rho=rho, nthreads=nthreads, wav = [5000.0])
-    
+
     t1 = time.time()
     print("Rho case dT = {0}s".format(t1-t0))
-    
-    
+
+
     #
     # Imagine that we also want to get LTE electron densities, we can compute them in parallel
     #
 
     Ne = pyTau.getNe(Tg, Pg=pgas, nthreads=nthreads)
-    
+
 
 
     #
@@ -75,7 +95,7 @@ if __name__ == "__main__":
     velscal=0.4     # scaling of velocity gradients in km/s (larger number gives less weight)
     Tcut = 25000.   # Temperature cut off in the corona
     ltau_cut = 1.5  # Maximum ltau500 in the lowe boundary
-    
+
     idx = pyTau.getOptimizedScale(Tg, rho, vz, ltau500, nDep2=nDep2, Tcut=Tcut,
                                   ltau_cut=ltau_cut, smooth_window=smooth,
                                   vel_scal=velscal, nthreads=nthreads)
@@ -94,18 +114,18 @@ if __name__ == "__main__":
     #
     # plot variables in the new grid
     #
-    
+
     plt.ion(); plt.close("all")
-    
+
     f, ax = plt.subplots(nrows=1, ncols=2, figsize=(6,3))
-    
+
     ax[0].plot(z[0,0]*1.e-5, Tg[0,0]*1.e-3,'k.', markersize=4, label='Original')
     ax[0].plot(z_new[0,0]*1.e-5, Tg_new[0,0]*1.e-3,'.', color='orangered', markersize=4, label='Optimized')
     ax[0].set_ylim(4,13)
     ax[0].set_ylabel('T [kK]')
     ax[0].set_xlabel('z [km]')
     ax[0].legend(frameon=True, loc='upper left', fontsize=6)
-    
+
     ax[1].plot(z[0,0]*1.e-5, vz[0,0]*1.e-5,'k.', markersize=4)
     ax[1].plot(z_new[0,0]*1.e-5, vz_new[0,0]*1.e-5,'.', color='orangered', markersize=4)
     ax[1].set_ylabel('vz [km/s]')
